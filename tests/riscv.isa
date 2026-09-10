@@ -1,0 +1,195 @@
+arch RV32I = {
+    endianness = Little;
+
+
+    enum GPR : bits<5> = {
+        x0  = 0;
+        x1  = 1;
+        x2  = 2;
+        x3  = 3;
+        x4  = 4;
+        x5  = 5;
+        x6  = 6;
+        x7  = 7;
+        x8  = 8;
+        x9  = 9;
+        x10 = 10;
+        x11 = 11;
+        x12 = 12;
+        x13 = 13;
+        x14 = 14;
+        x15 = 15;
+        x16 = 16;
+        x17 = 17;
+        x18 = 18;
+        x19 = 19;
+        x20 = 20;
+        x21 = 21;
+        x22 = 22;
+        x23 = 23;
+        x24 = 24;
+        x25 = 25;
+        x26 = 26;
+        x27 = 27;
+        x28 = 28;
+        x29 = 29;
+        x30 = 30;
+        x31 = 31;
+    };
+
+
+    /*
+     * Common 32-bit instruction fields.
+     *
+     * Fields without an explicit type are inferred as bits<N>.
+     */
+    instr-format default = {
+        width = 32;
+
+        [6:0] = opcode;
+    };
+
+
+    /*
+     * R-type
+     *
+     * funct7, funct3 and opcode are inferred as bits<N>.
+     * rs1, rs2 and rd use the GPR symbolic type.
+     */
+    instr-format R : default = {
+        [31:25] = funct7;
+        [24:20] = rs2 : GPR;
+        [19:15] = rs1 : GPR;
+        [14:12] = funct3;
+        [11:7]  = rd : GPR;
+    };
+
+
+    // I-type
+    instr-format I : default = {
+        [31:20] = imm : sint<12>;
+        [19:15] = rs1 : GPR;
+        [14:12] = funct3;
+        [11:7]  = rd : GPR;
+    };
+
+
+    /*
+     * Shift-immediate I-type.
+     *
+     * shamt is interpreted as an unsigned assembly operand.
+     */
+    instr-format I-Shift : default = {
+        [31:25] = funct7;
+        [24:20] = shamt : uint<5>;
+        [19:15] = rs1 : GPR;
+        [14:12] = funct3;
+        [11:7]  = rd : GPR;
+    };
+
+
+    /*
+     * B-type.
+     *
+     * A logical field can be declared separately when its bits
+     * are scattered throughout the encoding.
+     */
+    instr-format B : default = {
+        imm : sint<13>;
+
+        [31]    = imm[12];
+        [30:25] = imm[10:5];
+        [24:20] = rs2 : GPR;
+        [19:15] = rs1 : GPR;
+        [14:12] = funct3;
+        [11:8]  = imm[4:1];
+        [7]     = imm[11];
+    };
+
+
+    instr add : R = {
+        encoding = {
+            opcode = 0b0110011;
+            funct3 = 0b000;
+            funct7 = 0b0000000;
+        };
+
+        assembly = "add {rd}, {rs1}, {rs2}";
+    };
+
+
+    instr sub : R = {
+        encoding = {
+            opcode = 0b0110011;
+            funct3 = 0b000;
+            funct7 = 0b0100000;
+        };
+
+        assembly = "sub {rd}, {rs1}, {rs2}";
+    };
+
+
+    instr and : R = {
+        encoding = {
+            opcode = 0b0110011;
+            funct3 = 0b111;
+            funct7 = 0b0000000;
+        };
+
+        assembly = "and {rd}, {rs1}, {rs2}";
+    };
+
+
+    instr addi : I = {
+        encoding = {
+            opcode = 0b0010011;
+            funct3 = 0b000;
+        };
+
+        assembly = "addi {rd}, {rs1}, {imm}";
+    };
+
+
+    instr slli : I-Shift = {
+        encoding = {
+            opcode = 0b0010011;
+            funct3 = 0b001;
+            funct7 = 0b0000000;
+        };
+
+        assembly = "slli {rd}, {rs1}, {shamt}";
+    };
+
+
+    instr beq : B = {
+        encoding = {
+            opcode = 0b1100011;
+            funct3 = 0b000;
+        };
+
+        assembly = "beq {rs1}, {rs2}, {imm}";
+    };
+
+
+    instr bne : B = {
+        encoding = {
+            opcode = 0b1100011;
+            funct3 = 0b001;
+        };
+
+        assembly = "bne {rs1}, {rs2}, {imm}";
+    };
+
+
+    alias nop = {
+        instr = addi;
+
+        encoding = {
+            rd  = x0;
+            rs1 = x0;
+            imm = 0;
+        };
+
+        assembly = "nop";
+    };
+};

@@ -1,0 +1,14 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(Boost REQUIRED)
+
+include("${CMAKE_CURRENT_LIST_DIR}/SislTargets.cmake")
+
+if(NOT TARGET Sisl::Sisl)
+  add_library(Sisl::Sisl INTERFACE IMPORTED)
+  set_property(TARGET Sisl::Sisl PROPERTY
+    INTERFACE_LINK_LIBRARIES sisl::sisl)
+endif()
+
+check_required_components(Sisl)
