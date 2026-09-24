@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(Sisl VERSION 0.1.0 LANGUAGES CXX)
+project(Sisl VERSION 0.1.1 LANGUAGES CXX)
 
 if(POLICY CMP0167)
   cmake_policy(SET CMP0167 NEW)
