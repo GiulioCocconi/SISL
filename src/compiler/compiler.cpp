@@ -29,6 +29,104 @@
 
 namespace sisl::detail {
 
+namespace {
+
+FieldKind public_kind(PrimitiveType kind) {
+  switch (kind) {
+  case PrimitiveType::bits: return FieldKind::bits;
+  case PrimitiveType::unsigned_integer: return FieldKind::unsigned_integer;
+  case PrimitiveType::signed_integer: return FieldKind::signed_integer;
+  case PrimitiveType::enumeration: return FieldKind::enumeration;
+  }
+  return FieldKind::bits;
+}
+
+template <typename FieldT>
+FieldDescription describe_field(const FieldT &field, const EnumIndex &enums) {
+  FieldDescription result{.name = field.name,
+                          .kind = public_kind(field.type.kind),
+                          .width = field.type.width};
+  if (field.type.enumeration) {
+    for (const auto &[name, value] : enums) {
+      if (value == field.type.enumeration) {
+        result.enumeration = name;
+        break;
+      }
+    }
+  }
+  for (const auto &mapping : field.mappings) {
+    result.mappings.push_back({{mapping.instruction_range.msb,
+                                mapping.instruction_range.lsb},
+                               {mapping.field_range.msb, mapping.field_range.lsb}});
+  }
+  return result;
+}
+
+FixedFieldDescription describe_fixed(const Field &field, const Integer &value) {
+  FixedFieldDescription result{.name = field.name, .value = value};
+  if (field.type.enumeration) {
+    for (const auto &[name, member_value] : field.type.enumeration->members) {
+      if (member_value == value) {
+        result.enum_member = name;
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+IsaDescription describe_isa(const ArchitectureAst &ast, const EnumIndex &enums,
+                            const FormatIndex &formats,
+                            const InstructionPass &instructions,
+                            const AliasPass &aliases) {
+  IsaDescription result;
+  result.name = ast.name;
+  for (const auto &entry : ast.enums) {
+    const auto &compiled = *enums.at(entry.name);
+    result.enums.push_back({entry.name, compiled.width, compiled.members});
+  }
+  for (const auto &entry : ast.formats) {
+    const auto &layout = formats.at(entry.name);
+    FormatDescription format{.name = entry.name,
+                             .parent = entry.parent ? std::optional{entry.parent->value}
+                                                    : std::nullopt,
+                             .width = layout.width};
+    for (const auto &field : layout.fields)
+      format.fields.push_back(describe_field(field, enums));
+    result.formats.push_back(std::move(format));
+  }
+  for (const auto &entry : ast.instructions) {
+    const auto &compiled = *instructions.index.at(entry.name);
+    InstructionDescription instruction{
+        .name = entry.name,
+        .format = entry.format ? std::optional{entry.format->value} : std::nullopt,
+        .width = compiled.width,
+        .assembly = entry.assembly.first->value.value};
+    for (const auto &field : compiled.fields) {
+      instruction.fields.push_back(describe_field(field, enums));
+      if (std::ranges::find(compiled.variable_fields, field.name) ==
+          compiled.variable_fields.end())
+        instruction.fixed_fields.push_back(describe_fixed(field, gather(field, compiled.match)));
+    }
+    result.instructions.push_back(std::move(instruction));
+  }
+  for (const auto &entry : ast.aliases) {
+    const auto &compiled = *aliases.index.at(entry.name);
+    AliasDescription alias{.name = entry.name,
+                           .target = compiled.target->name,
+                           .assembly = entry.assembly.first->value.value};
+    for (const auto &field : compiled.target->fields) {
+      if (const auto found = compiled.bindings.find(field.name);
+          found != compiled.bindings.end())
+        alias.additional_fixed_fields.push_back(describe_fixed(field, found->second));
+    }
+    result.aliases.push_back(std::move(alias));
+  }
+  return result;
+}
+
+} // namespace
+
 std::optional<std::size_t> native_index(const Integer &value, SourceSpan source,
                                         std::string_view description,
                                         DiagnosticCode invalid_code,
@@ -210,6 +308,7 @@ std::shared_ptr<const Model> compile(const ArchitectureAst &ast,
 
   auto model = std::make_shared<Model>();
   model->big_endian = big_endian;
+  model->description = describe_isa(ast, enums, formats, instructions, aliases);
   model->instruction_index = std::move(instructions.index);
   model->alias_index = std::move(aliases.index);
   for (auto &instruction : instructions.ordered) {

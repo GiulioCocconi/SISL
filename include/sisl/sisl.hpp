@@ -170,6 +170,69 @@ struct SISL_API DecodedInstruction {
                          const DecodedInstruction &) = default;
 };
 
+struct SISL_API BitRange {
+  std::size_t msb;
+  std::size_t lsb;
+};
+
+struct SISL_API FieldMapping {
+  BitRange instruction_bits;
+  BitRange field_bits;
+};
+
+enum class FieldKind { bits, unsigned_integer, signed_integer, enumeration };
+
+struct SISL_API FieldDescription {
+  std::string name;
+  FieldKind kind;
+  std::size_t width;
+  std::string enumeration;
+  std::vector<FieldMapping> mappings;
+};
+
+struct SISL_API EnumDescription {
+  std::string name;
+  std::size_t width;
+  std::vector<std::pair<std::string, Integer>> members;
+};
+
+struct SISL_API FormatDescription {
+  std::string name;
+  std::optional<std::string> parent;
+  std::optional<std::size_t> width;
+  std::vector<FieldDescription> fields;
+};
+
+struct SISL_API FixedFieldDescription {
+  std::string name;
+  Integer value;
+  std::optional<std::string> enum_member;
+};
+
+struct SISL_API InstructionDescription {
+  std::string name;
+  std::optional<std::string> format;
+  std::size_t width;
+  std::vector<FieldDescription> fields;
+  std::vector<FixedFieldDescription> fixed_fields;
+  std::string assembly;
+};
+
+struct SISL_API AliasDescription {
+  std::string name;
+  std::string target;
+  std::vector<FixedFieldDescription> additional_fixed_fields;
+  std::string assembly;
+};
+
+struct SISL_API IsaDescription {
+  std::string name;
+  std::vector<EnumDescription> enums;
+  std::vector<FormatDescription> formats;
+  std::vector<InstructionDescription> instructions;
+  std::vector<AliasDescription> aliases;
+};
+
 namespace detail {
 struct Model;
 }
@@ -178,6 +241,8 @@ class SISL_API Isa {
 public:
   [[nodiscard]] static Isa load_file(const std::filesystem::path &path);
   [[nodiscard]] static Isa load_string(std::string_view source);
+
+  [[nodiscard]] IsaDescription describe() const;
 
   [[nodiscard]] Integer encode(std::string_view instruction,
                                const Operands &operands) const;

@@ -3,6 +3,7 @@ find_package(GTest REQUIRED)
 include(GoogleTest)
 
 add_executable(sisl_cpp_tests
+  test_description.cpp
   test_parser.cpp
   test_compiler.cpp
   test_runtime.cpp)

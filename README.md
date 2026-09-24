@@ -78,6 +78,9 @@ auto encoded = isa.encode(
 
 auto decoded = isa.decode(encoded);
 auto text = isa.disassemble(encoded); // "add x1, x2, x3"
+
+// Read resolved formats, fields, enums, instructions, and aliases.
+auto description = isa.describe();
 ```
 
 ## Building

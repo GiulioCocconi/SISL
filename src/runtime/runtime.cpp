@@ -415,6 +415,10 @@ Isa Isa::load_string(std::string_view source) {
   return Isa(load_model(source, "isa-string"));
 }
 
+IsaDescription Isa::describe() const {
+  return require_model(model_).description;
+}
+
 Isa Isa::load_file(const std::filesystem::path &path) {
   std::ifstream input(path, std::ios::binary);
   if (!input) {

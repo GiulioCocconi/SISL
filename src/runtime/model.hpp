@@ -101,6 +101,7 @@ struct Alias {
 
 struct Model {
   bool big_endian = false;
+  IsaDescription description;
   std::vector<std::shared_ptr<const Instruction>> instructions;
   std::vector<std::shared_ptr<const Alias>> aliases;
   std::unordered_map<std::string, std::shared_ptr<const Instruction>>
